@@ -30,9 +30,9 @@ public class Miner extends Thread{
         String challengeString = "0".repeat(difficulty);
         boolean hashFound;
         String status;
-
+        long timeStamp = new Date().getTime();
+        
         while(true) {
-            long timeStamp = new Date().getTime();
             currentHash = generateHash(id, timeStamp, previousHash, ++nonce);
             hashFound = currentHash.substring(0, difficulty).equals(challengeString);
 
