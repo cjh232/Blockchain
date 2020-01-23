@@ -33,10 +33,6 @@ public class Blockchain {
     }
 
     public Block getTopBlock() {
-        if(blockchain.size() == 0) {
-            return null;
-        }
-
         return blockchain.get(blockchain.size() - 1);
     }
 
