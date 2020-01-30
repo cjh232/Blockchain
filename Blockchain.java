@@ -97,9 +97,9 @@ public class Blockchain {
 
     public synchronized void adjustDifficulty(long timeToGenerate) {
 
-        if(timeToGenerate < 10) {
+        if(timeToGenerate < LOWER_TIME_BOUND) {
             System.out.printf("N was increased to %d\n", ++difficulty);
-        } else if(timeToGenerate > 60) {
+        } else if(timeToGenerate > UPPER_TIME_BOUND) {
             System.out.printf("N was decreased by 1\n");
             difficulty--;
         } else {
