@@ -10,10 +10,10 @@ public class Blockchain {
     public static Blockchain instance = null;
     private List<Block> blockchain;
     private volatile Block lastBlock;
-    private static final int UPPER_TIME_BOUND = 60;
-    private static final int LOWER_TIME_BOUND = 10;
     private volatile int difficulty;
     private volatile long timeLastAdded;
+    private static final int UPPER_TIME_BOUND = 60;
+    private static final int LOWER_TIME_BOUND = 10;
 
     private Blockchain() {
         this.blockchain = new ArrayList<Block>();
