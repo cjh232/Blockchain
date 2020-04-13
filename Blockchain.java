@@ -1,26 +1,22 @@
 package blockchain;
 
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.Random;
+import java.util.Scanner;
 
 public class Blockchain {
 
-    public static Blockchain instance = null;
-    private List<Block> blockchain;
-    private volatile Block lastBlock;
-    private volatile int difficulty;
-    private volatile long timeLastAdded;
-    private static final int UPPER_TIME_BOUND = 60;
-    private static final int LOWER_TIME_BOUND = 10;
+    ArrayList<Block> blocks;
+    Block lastBlock;
+    private static Blockchain instance;
+    private int DIFFICULTY;
 
     private Blockchain() {
-        this.blockchain = new ArrayList<Block>();
-        this.difficulty = 0;
-        Block genesisBlock = new Block(0,0, new Date().getTime(), "0", "0", 0);
-        blockchain.add(genesisBlock);
-        timeLastAdded = genesisBlock.getTimestamp();
+        blocks = new ArrayList<>();
+        Scanner scannner = new Scanner(System.in);
+        System.out.print("Enter how many zeros the hash must start with: ");
+        this.DIFFICULTY = scannner.nextInt();
     }
 
     public static Blockchain getInstance() {
@@ -31,83 +27,59 @@ public class Blockchain {
         return instance;
     }
 
-    public int getDifficulty() {
-        return difficulty;
+    private String generateHash(int id, int nonce, long timestamp, String previousHash) {
+        String blockContents = id + nonce + timestamp + previousHash;
+        return StringUtil.applySha256(blockContents);
     }
 
-    public Block getTopBlock() {
-        return blockchain.get(blockchain.size() - 1);
+    public void generateNextBlock() {
+        Random ran = new Random();
+
+        int id = lastBlock != null ? lastBlock.getId() + 1 : 1;
+        long timestamp = new Date().getTime();
+        int nonce = ran.nextInt() & Integer.MAX_VALUE;
+
+        String previousHash = lastBlock != null ? lastBlock.getCurrentHash() : "0";
+        String currentHash = generateHash(id, nonce, timestamp, previousHash);
+
+        String challenge = "0".repeat(DIFFICULTY);
+        String subString = currentHash.substring(0, DIFFICULTY);
+
+        while(!subString.equals(challenge)) {
+            nonce = ran.nextInt() & Integer.MAX_VALUE;
+            currentHash = generateHash(id, nonce, timestamp, previousHash);
+            subString = currentHash.substring(0, DIFFICULTY);
+        }
+
+        Block newBlock = new Block(id, nonce, timestamp, new Date().getTime(), previousHash, currentHash);
+        lastBlock = newBlock;
+
+        blocks.add(newBlock);
+
+
     }
 
-    public void printChain() {
-        for(Block block: blockchain) {
-            if(block.getId() == 0) continue;
-            System.out.println(block.toString());
+    public boolean validateChain() {
+        int idx = 0;
+
+        while(idx + 1 < blocks.size()) {
+            Block curr = blocks.get(idx);
+            Block next = blocks.get(idx + 1);
+
+            if(!curr.getCurrentHash().equals(next.getPreviousHash())) {
+                return false;
+            }
+
+            idx++;
+        }
+
+        return true;
+    }
+
+    public void print() {
+        for(Block b: blocks) {
+            System.out.println(b.toString());
         }
     }
 
-    public synchronized String addBlock(Block block) {
-        String status = validateBlock(block);
-
-        if(status.equals("100")) {
-            // System.out.println("Validated!");
-            blockchain.add(block);
-            long timeToGenerate = (new Date().getTime() - timeLastAdded) /  1000;
-            timeLastAdded = new Date().getTime();
-
-            System.out.print("\n" + block.toString());
-            System.out.printf("Block was generating for %d seconds\n", timeToGenerate);
-
-            adjustDifficulty(timeToGenerate);
-
-        }
-
-        return status;
-
-    }
-
-    public synchronized String validateBlock(Block block) {
-        Block lastBlock = getTopBlock();
-
-        String challengeString = "0".repeat(difficulty);
-        boolean validated = block.getCurrentHash().substring(0,difficulty).equals(challengeString);
-        boolean isChained = lastBlock.getCurrentHash().equals(block.getPreviousHash());
-
-        if(validated && isChained) {
-            // Correct hash and the spot is correct
-            return "100";
-        }
-
-        if(!validated && isChained) {
-            // Wrong hash but the spot is correct. Miner can try again.
-            return "101";
-        }
-
-        // Wrong hash and it is not in the right spot
-        if(!validated && !isChained) {
-            return "102";
-        }
-
-        // Correct hash, but wrong spot
-        return "103";
-
-
-
-    }
-
-    public synchronized void adjustDifficulty(long timeToGenerate) {
-
-        if(timeToGenerate < LOWER_TIME_BOUND) {
-            System.out.printf("N was increased to %d\n", ++difficulty);
-        } else if(timeToGenerate > UPPER_TIME_BOUND) {
-            System.out.printf("N was decreased by 1\n");
-            difficulty--;
-        } else {
-            System.out.print("N stays the same\n");
-        }
-    }
-
-    public int size() {
-        return blockchain.size();
-    }
 }
