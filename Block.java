@@ -2,6 +2,8 @@ package blockchain;
 
 public class Block {
 
+    private int minerID;
+
     private int id;
     private int nonce;
     private long timestamp;
@@ -11,7 +13,8 @@ public class Block {
 
     private long timeAdded;
 
-    public Block(int id, int nonce, long timestamp, long timeAdded, String previousHash, String currentHash) {
+    public Block(int minerID, int id, int nonce, long timestamp, long timeAdded, String previousHash, String currentHash) {
+        this.minerID = minerID;
         this.id = id;
         this.nonce = nonce;
         this.timestamp = timestamp;
@@ -43,6 +46,7 @@ public class Block {
     @Override
     public String toString() {
         return String.format("Block:\n" +
+                "Created by miner # %d\n" +
                 "Id: %d\n" +
                 "Timestamp: %d\n" +
                 "Magic number: %d\n" +
@@ -50,6 +54,6 @@ public class Block {
                 "%s\n" +
                 "Hash of the block:\n" +
                 "%s\n" +
-                "Block was generating for %d seconds\n", id, timestamp, nonce, previousHash, currentHash, getComputeTime());
+                "Block was generating for %d seconds\n", minerID, id, timestamp, nonce, previousHash, currentHash, getComputeTime());
     }
 }
