@@ -8,15 +8,16 @@ import java.util.Scanner;
 public class Blockchain {
 
     ArrayList<Block> blocks;
-    Block lastBlock;
+    volatile Block  lastBlock;
     private static Blockchain instance;
-    private int DIFFICULTY;
+
+    private volatile long timeLastAdded;
+    private volatile int DIFFICULTY;
 
     private Blockchain() {
         blocks = new ArrayList<>();
-        Scanner scannner = new Scanner(System.in);
-        System.out.print("Enter how many zeros the hash must start with: ");
-        this.DIFFICULTY = scannner.nextInt();
+        timeLastAdded = new Date().getTime();
+        this.DIFFICULTY = 0;
     }
 
     public static Blockchain getInstance() {
@@ -27,36 +28,8 @@ public class Blockchain {
         return instance;
     }
 
-    private String generateHash(int id, int nonce, long timestamp, String previousHash) {
-        String blockContents = id + nonce + timestamp + previousHash;
-        return StringUtil.applySha256(blockContents);
-    }
-
-    public void generateNextBlock() {
-        Random ran = new Random();
-
-        int id = lastBlock != null ? lastBlock.getId() + 1 : 1;
-        long timestamp = new Date().getTime();
-        int nonce = ran.nextInt() & Integer.MAX_VALUE;
-
-        String previousHash = lastBlock != null ? lastBlock.getCurrentHash() : "0";
-        String currentHash = generateHash(id, nonce, timestamp, previousHash);
-
-        String challenge = "0".repeat(DIFFICULTY);
-        String subString = currentHash.substring(0, DIFFICULTY);
-
-        while(!subString.equals(challenge)) {
-            nonce = ran.nextInt() & Integer.MAX_VALUE;
-            currentHash = generateHash(id, nonce, timestamp, previousHash);
-            subString = currentHash.substring(0, DIFFICULTY);
-        }
-
-        Block newBlock = new Block(id, nonce, timestamp, new Date().getTime(), previousHash, currentHash);
-        lastBlock = newBlock;
-
-        blocks.add(newBlock);
-
-
+    public Block getLastBlock() {
+        return lastBlock;
     }
 
     public boolean validateChain() {
@@ -76,10 +49,65 @@ public class Blockchain {
         return true;
     }
 
+    public int getDifficulty() {
+        return this.DIFFICULTY;
+    }
+
     public void print() {
         for(Block b: blocks) {
             System.out.println(b.toString());
         }
     }
 
+    public synchronized boolean validateNewBlock(Block newBlock) {
+        String challenge = "0".repeat(DIFFICULTY);
+        String subString = newBlock.getCurrentHash().substring(0, DIFFICULTY);
+        int lastID = lastBlock != null ? lastBlock.getId() : 0;
+        String lastHash = lastBlock != null ? lastBlock.getCurrentHash() : "0";
+
+        if(challenge.equals(subString)) {
+            if(newBlock.getId() == lastID + 1) {
+                if(newBlock.getPreviousHash().equals(lastHash)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public synchronized boolean  offerBlock(Block newBlock, int minerID) {
+        // System.out.println("Miner " + minerID + " is offering a block");
+
+        if(!validateNewBlock(newBlock)) {
+            // System.out.println("failed...");
+            return false;
+        }
+
+
+        blocks.add(newBlock);
+        System.out.print(newBlock.toString());
+
+        adjustDifficulty(new Date().getTime());
+        lastBlock = newBlock;
+
+        return true;
+    }
+
+    public synchronized void adjustDifficulty(long now) {
+
+        long timeSinceLastAdded = (now - timeLastAdded) / 1000;
+
+        if(timeSinceLastAdded < 15) {
+            DIFFICULTY++;
+            System.out.println("N was increased to " + DIFFICULTY + "\n");
+        } else if(timeSinceLastAdded <= 60) {
+            System.out.println("N stays the same\n");
+        } else {
+            DIFFICULTY--;
+            System.out.println("N was decreased by 1\n");
+        }
+
+        timeLastAdded = now;
+    }
 }
